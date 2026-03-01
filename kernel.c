@@ -1,12 +1,31 @@
 #define VGA_Width 25 // inverti os nomes kakakakaka
 #define VGA_Height 80
 
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+
+
+
+static inline void outb(uint16_t port, uint8_t val){
+	__asm__ volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
+	return;
+}
+
 void loadVGAmemory(char data, int x, int y, char color){
 	volatile char* vga = (volatile char*) 0xB8000;
-	int index = (y * VGA_Width + x) * 2;
+	int index = (y * VGA_Height + x) * 2;
 	vga[index] = data;
 	index ++;
 	vga[index] = color;
+	return;
+}
+
+void updateCursor(int x, int y){
+	uint16_t pos = (y * VGA_Height + x);
+	outb(0x3D4, 0x0E);
+	outb(0x3D5, (pos >> 8) & 0xFF);
+	outb(0x3D4, 0x0F);
+	outb(0x3D5, pos & 0xFF); 
 	return;
 }
 
@@ -16,7 +35,6 @@ void print(char* address, int size){
 	char data;
 	for(i = 0; i < size; i++){
 		data = *(address + i);
-	
 		// auto scrool
 		if (y > VGA_Width) y --; //not added yet
 
@@ -44,7 +62,7 @@ void print(char* address, int size){
 				x = 0;
 				break;
 			case 'r':
-				x=0;
+				x = 0;
 				y++;
 				break;
 			case '|':
@@ -58,13 +76,14 @@ void print(char* address, int size){
 		loadVGAmemory(data, x, y, 0x0F);
 		x ++;
 	}
+	updateCursor(x, y);
 	return;
 }
 
 void kernel_main(){
 	// first message
-	char* str = "Hello World!";
-	char* str2 = " I am the Steve!";
+	char* str = "Hello World!|n";
+	char* str2 = " I am the Steve!|rBom dia e cia :)";
 	int size = 0;
 	for (size = 0; str[size] != '\0'; size ++);
 	print(str, size);
